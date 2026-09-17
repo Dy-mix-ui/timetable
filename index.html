@@ -75,8 +75,9 @@ button:focus-visible{outline:2px solid currentColor;outline-offset:2px}
 
 .adjust{
   display:flex;align-items:center;gap:8px;flex-wrap:wrap;
-  padding:12px 0;border-bottom:1px solid var(--rule);
+  padding:10px 0;border-bottom:1px solid var(--rule);
   font-size:.78rem;color:var(--muted);
+  position:sticky;top:var(--adjTop,250px);z-index:3;background:var(--paper);
 }
 .adjust .lab{margin-right:2px}
 .adjust button{
@@ -381,12 +382,18 @@ button:focus-visible{outline:2px solid currentColor;outline-offset:2px}
   function headerHeight(){
     var tb = document.querySelector(".topbar");
     var nw = document.querySelector(".now");
-    return (tb ? tb.offsetHeight : 0) + (nw ? nw.offsetHeight : 0);
+    var aj = document.querySelector(".adjust");
+    return (tb?tb.offsetHeight:0) + (nw?nw.offsetHeight:0) + (aj?aj.offsetHeight:0);
   }
 
   function measureHeader(){
     var tb = document.querySelector(".topbar");
-    if (tb) document.documentElement.style.setProperty("--topH", tb.offsetHeight+"px");
+    var nw = document.querySelector(".now");
+    var t = tb ? tb.offsetHeight : 0;
+    var n = nw ? nw.offsetHeight : 0;
+    var root = document.documentElement.style;
+    root.setProperty("--topH", t+"px");
+    root.setProperty("--adjTop", (t+n)+"px");
   }
 
   function start(){
