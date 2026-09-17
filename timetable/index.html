@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="時刻表">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#E9ECEF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121820" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<title>1日の時刻表</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#E9ECEF; --surface:#FFFFFF; --ink:#141C27;
+  --muted:#79838F; --rule:#D3D9DF; --dim:#B7BFC7;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#121820; --surface:#1A222C; --ink:#E6EAEF;
+    --muted:#8A95A2; --rule:#2A333F; --dim:#4A5561;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#121820; --surface:#1A222C; --ink:#E6EAEF;
+  --muted:#8A95A2; --rule:#2A333F; --dim:#4A5561;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",system-ui,sans-serif;
+  line-height:1.65; font-size:16px;
+  padding:0 0 env(safe-area-inset-bottom);
+  -webkit-tap-highlight-color:transparent;
+}
+.num{font-family:"Barlow Condensed","Hiragino Sans",sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.wrap{max-width:560px;margin:0 auto;padding:0 18px}
+
+.topbar{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 0 10px;border-bottom:1px solid var(--rule);
+  position:sticky;top:0;z-index:5;background:var(--paper);
+}
+.date{font-size:.82rem;color:var(--muted)}
+.clock{margin-left:auto;font-size:1.45rem;font-weight:600;line-height:1}
+.seg{display:flex;border:1px solid var(--rule);border-radius:999px;overflow:hidden}
+.seg button{
+  font:inherit;font-family:inherit;font-size:.74rem;padding:4px 11px;
+  border:0;cursor:pointer;background:transparent;color:var(--muted);
+}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+button:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+
+.now{
+  padding:20px 0 18px;border-bottom:1px solid var(--rule);
+  position:sticky;top:var(--topH,52px);z-index:4;background:var(--paper);
+}
+.now-kicker{font-size:.78rem;color:var(--muted);margin-bottom:2px}
+.now-title{font-size:2.15rem;font-weight:700;line-height:1.15;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+.now-title .tick{width:10px;height:28px;border-radius:2px;flex:none;background:var(--muted)}
+.now-sub{font-size:.9rem;color:var(--muted);margin-top:6px}
+.now-count{display:flex;align-items:baseline;gap:7px;margin-top:16px}
+.now-count .big{font-size:3.1rem;font-weight:600;line-height:.9}
+.now-count .unit{font-size:.9rem;color:var(--muted)}
+.bar{height:6px;background:var(--rule);border-radius:3px;margin-top:12px;overflow:hidden}
+.bar>i{display:block;height:100%;width:0;background:var(--ink);border-radius:3px}
+.next{margin-top:14px;font-size:.92rem;color:var(--muted);display:flex;gap:9px;align-items:center}
+.next b{color:var(--ink);font-weight:600}
+
+.adjust{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:12px 0;border-bottom:1px solid var(--rule);
+  font-size:.78rem;color:var(--muted);
+}
+.adjust .lab{margin-right:2px}
+.adjust button{
+  font:inherit;font-family:inherit;font-size:.78rem;
+  padding:3px 10px;border:1px solid var(--rule);border-radius:999px;
+  background:transparent;color:var(--muted);cursor:pointer;
+}
+.adjust button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+.list{padding:6px 0 26px}
+.row{
+  display:grid;grid-template-columns:44px 16px 1fr;gap:0 12px;align-items:stretch;
+  border:0;background:transparent;width:100%;text-align:left;font:inherit;
+  font-family:inherit;color:inherit;cursor:pointer;padding:0;
+}
+.row .t{font-size:.9rem;color:var(--muted);padding-top:6px;text-align:right}
+.row .rail{position:relative;display:flex;justify-content:center}
+.row .rail:before{content:"";position:absolute;top:0;bottom:0;width:4px;border-radius:2px;background:var(--seg);opacity:.32}
+.row .body{padding:5px 0 12px;min-width:0}
+.row .name{font-size:1rem;font-weight:600}
+.row .note{font-size:.8rem;color:var(--muted);margin-top:1px}
+.row.past .name,.row.past .t,.row.past .note{color:var(--dim);font-weight:400}
+.row.past .rail:before{opacity:.16}
+.row.current .rail:before{opacity:1}
+.row.current .name{font-weight:700}
+.row.current .t{color:var(--ink);font-weight:600}
+.row.skipped .name{text-decoration:line-through;color:var(--dim);font-weight:400}
+.row.skipped .rail:before{opacity:.12}
+.nowmark{position:absolute;left:50%;transform:translate(-50%,-50%);z-index:2}
+.nowmark:before{
+  content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:14px;height:14px;border-radius:50%;background:var(--ink);
+  box-shadow:0 0 0 3px var(--paper);
+}
+
+.foot{border-top:1px solid var(--rule);padding:16px 0 34px;font-size:.8rem;color:var(--muted);line-height:1.8}
+.foot b{color:var(--ink);font-weight:600}
+.error{padding:40px 0;font-size:.95rem;line-height:1.9}
+@media (prefers-reduced-motion:no-preference){ .bar>i{transition:width .4s ease} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="topbar">
+    <span class="date num" id="date">—</span>
+    <div class="seg" role="group" aria-label="平日か休日か">
+      <button type="button" id="m-week" aria-pressed="true">平日</button>
+      <button type="button" id="m-off" aria-pressed="false">休日</button>
+    </div>
+    <span class="clock num" id="clock">--:--</span>
+  </header>
+
+  <main id="app" hidden>
+    <section class="now">
+      <p class="now-kicker" id="kicker">いま</p>
+      <h1 class="now-title"><span class="tick" id="tick"></span><span id="nowName">—</span></h1>
+      <p class="now-sub" id="nowSub"></p>
+      <div class="now-count">
+        <span class="big num" id="remain">—</span>
+        <span class="unit" id="remainUnit">残り</span>
+      </div>
+      <div class="bar"><i id="barFill"></i></div>
+      <p class="next"><span>次</span><span class="num" id="nextTime">--:--</span><b id="nextName">—</b></p>
+    </section>
+
+    <div class="adjust">
+      <span class="lab">今日のずれ</span>
+      <button type="button" data-d="-30">−30分</button>
+      <button type="button" data-d="0">なし</button>
+      <button type="button" data-d="30">+30分</button>
+      <button type="button" data-d="60">+60分</button>
+      <button type="button" id="reset">リセット</button>
+    </div>
+
+    <div class="list" id="list"></div>
+
+    <footer class="foot">
+      <b>使い方</b><br>
+      各行をタップすると、その予定を今日だけ休みにできます。<br>
+      「今日のずれ」は、今より後ろの予定をまとめて前後させます。<br>
+      どちらも日付が変わればリセットされます。
+    </footer>
+  </main>
+
+  <div class="error" id="error" hidden>
+    <b>schedule.json を読み込めませんでした。</b><br>
+    ファイルを直接開いている場合は、サーバー経由で開いてください。<br>
+    ローカルで確認するなら、フォルダで <code>npx serve</code> を実行します。
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var WD = ["日","月","火","水","木","金","土"];
+  var DAYKEY = ["sun","mon","tue","wed","thu","fri","sat"];
+  var $ = function(id){ return document.getElementById(id); };
+
+  var DATA = null, mode = null, rows = [], blocks = [], nowEl = null;
+  var state = { skip: [], delta: 0, anchor: null };
+
+  function pad(n){ return (n<10?"0":"")+n; }
+  function hhmm(m){ m=((m%1440)+1440)%1440; return pad(Math.floor(m/60))+":"+pad(m%60); }
+  function toMin(s){ var p=String(s).split(":"); return (+p[0])*60 + (+p[1]||0); }
+
+  function todayKey(){
+    var d=new Date();
+    return "tt:"+d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+  }
+  function loadState(){
+    try{
+      var raw = localStorage.getItem(todayKey());
+      if (raw){ var o=JSON.parse(raw); state = {skip:o.skip||[], delta:o.delta||0, anchor:(o.anchor==null?null:o.anchor), mode:o.mode}; }
+    }catch(e){}
+  }
+  function saveState(){
+    try{ localStorage.setItem(todayKey(), JSON.stringify({skip:state.skip, delta:state.delta, anchor:state.anchor, mode:mode})); }catch(e){}
+  }
+
+  function defaultMode(){
+    if (state.mode === "weekday" || state.mode === "holiday") return state.mode;
+    var g = new Date().getDay();
+    return (g===0||g===6) ? "holiday" : "weekday";
+  }
+
+  function isDark(){
+    var attr = document.documentElement.getAttribute("data-theme");
+    if (attr === "dark") return true;
+    if (attr === "light") return false;
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+  function lineColor(key){
+    var l = DATA.lines[key] || DATA.lines.rest;
+    return (isDark() && l.colorDark) ? l.colorDark : l.color;
+  }
+
+  function nowMin(){
+    var d=new Date(); return d.getHours()*60 + d.getMinutes();
+  }
+
+  /* raw blocks from JSON, with end derived from the next start */
+  function buildBlocks(){
+    var src = DATA.days[mode].blocks;
+    var out = src.map(function(b,i){
+      return {
+        id: mode+":"+b.start,
+        start: toMin(b.start),
+        end: (i+1 < src.length) ? toMin(src[i+1].start) : 1440,
+        name: b.name,
+        line: b.line || "rest",
+        note: b.note || ""
+      };
+    });
+    /* apply today's shift to everything starting at or after the anchor */
+    if (state.delta && state.anchor != null){
+      out.forEach(function(b){
+        if (b.start >= state.anchor){
+          b.start = Math.min(1440, Math.max(state.anchor, b.start + state.delta));
+          b.end   = Math.min(1440, Math.max(b.start,      b.end   + state.delta));
+        } else if (b.end > state.anchor){
+          b.end = Math.min(1440, Math.max(b.start, b.end + state.delta));
+        }
+      });
+      out.sort(function(a,b){ return a.start - b.start; });
+      for (var i=0;i<out.length-1;i++){ if (out[i].end > out[i+1].start) out[i].end = out[i+1].start; }
+    }
+    out.forEach(function(b){
+      b.skipped = state.skip.indexOf(b.id) !== -1;
+      if (b.line === "study" && !b.note){
+        b.note = DATA.studyThemes[DAYKEY[new Date().getDay()]] || "";
+      }
+    });
+    return out;
+  }
+
+  function segHeight(d){ return Math.max(46, Math.min(150, Math.round(d*0.55))); }
+
+  function render(){
+    blocks = buildBlocks();
+    $("m-week").setAttribute("aria-pressed", String(mode==="weekday"));
+    $("m-off").setAttribute("aria-pressed", String(mode==="holiday"));
+
+    var list = $("list"); list.innerHTML = ""; rows = [];
+    blocks.forEach(function(b){
+      var row = document.createElement("button");
+      row.type = "button"; row.className = "row";
+      if (b.skipped) row.classList.add("skipped");
+
+      var t = document.createElement("span");
+      t.className = "t num"; t.textContent = hhmm(b.start);
+
+      var rail = document.createElement("span");
+      rail.className = "rail";
+      rail.style.setProperty("--seg", b.skipped ? "var(--muted)" : lineColor(b.line));
+      rail.style.minHeight = segHeight(b.end-b.start)+"px";
+
+      var body = document.createElement("span");
+      body.className = "body";
+      var nm = document.createElement("span");
+      nm.className = "name"; nm.textContent = b.name;
+      body.appendChild(nm);
+      if (b.note){
+        var nt = document.createElement("span");
+        nt.className = "note"; nt.textContent = b.skipped ? "今日は休み" : b.note;
+        body.appendChild(nt);
+      } else if (b.skipped){
+        var nt2 = document.createElement("span");
+        nt2.className = "note"; nt2.textContent = "今日は休み";
+        body.appendChild(nt2);
+      }
+
+      row.appendChild(t); row.appendChild(rail); row.appendChild(body);
+      row.addEventListener("click", function(){ toggleSkip(b.id); });
+      list.appendChild(row);
+      rows.push({el:row, rail:rail, block:b});
+    });
+
+    if (!nowEl){
+      nowEl = document.createElement("span");
+      nowEl.className = "nowmark";
+    }
+
+    document.querySelectorAll(".adjust button[data-d]").forEach(function(btn){
+      btn.classList.toggle("on", (+btn.dataset.d) === state.delta);
+    });
+
+    tick(true);
+  }
+
+  function toggleSkip(id){
+    var i = state.skip.indexOf(id);
+    if (i === -1) state.skip.push(id); else state.skip.splice(i,1);
+    saveState(); render();
+  }
+
+  function setDelta(d){
+    if (state.anchor == null) state.anchor = nowMin();
+    state.delta = d;
+    if (d === 0) state.anchor = null;
+    saveState(); render();
+  }
+
+  function findIndex(mins){
+    for (var i=0;i<blocks.length;i++){ if (mins>=blocks[i].start && mins<blocks[i].end) return i; }
+    return blocks.length-1;
+  }
+
+  function tick(scroll){
+    if (!blocks.length) return;
+    var d = new Date();
+    var mins = d.getHours()*60 + d.getMinutes();
+    var secs = mins*60 + d.getSeconds();
+
+    $("clock").textContent = pad(d.getHours())+":"+pad(d.getMinutes());
+    $("date").textContent = (d.getMonth()+1)+"月"+d.getDate()+"日 ("+WD[d.getDay()]+")";
+
+    var i = findIndex(mins);
+    var b = blocks[i];
+    var nx = null;
+    for (var k=i+1;k<blocks.length;k++){ if (!blocks[k].skipped){ nx = blocks[k]; break; } }
+    if (!nx) nx = blocks[0];
+
+    $("tick").style.background = b.skipped ? "var(--muted)" : lineColor(b.line);
+    $("nowName").textContent = b.skipped ? "空き時間" : b.name;
+    $("kicker").textContent = (b.name === "睡眠") ? "本来は" : "いま";
+    var sub = b.skipped ? ("本来は " + b.name) : (b.note || (hhmm(b.start)+" 〜 "+hhmm(b.end)));
+    $("nowSub").textContent = sub;
+
+    var leftMin = Math.max(0, Math.ceil((b.end*60 - secs)/60));
+    if (leftMin >= 60){
+      $("remain").textContent = Math.floor(leftMin/60)+":"+pad(leftMin%60);
+      $("remainUnit").textContent = "残り (時間:分)";
+    } else {
+      $("remain").textContent = String(leftMin);
+      $("remainUnit").textContent = "分 残り";
+    }
+
+    var dur = (b.end-b.start)*60;
+    var prog = dur>0 ? Math.min(100, Math.max(0, ((secs - b.start*60)/dur)*100)) : 0;
+    $("barFill").style.width = prog.toFixed(1)+"%";
+    $("nextTime").textContent = hhmm(nx.start);
+    $("nextName").textContent = nx.name;
+
+    rows.forEach(function(r,k){
+      r.el.classList.toggle("past", k<i);
+      r.el.classList.toggle("current", k===i);
+      if (k===i){
+        if (nowEl.parentNode !== r.rail) r.rail.appendChild(nowEl);
+        nowEl.style.top = prog.toFixed(1)+"%";
+      }
+    });
+
+    if (scroll && rows[i]){
+      var y = rows[i].el.getBoundingClientRect().top + window.pageYOffset - headerHeight() - 24;
+      window.scrollTo(0, Math.max(0, y));
+    }
+  }
+
+  function headerHeight(){
+    var tb = document.querySelector(".topbar");
+    var nw = document.querySelector(".now");
+    return (tb ? tb.offsetHeight : 0) + (nw ? nw.offsetHeight : 0);
+  }
+
+  function measureHeader(){
+    var tb = document.querySelector(".topbar");
+    if (tb) document.documentElement.style.setProperty("--topH", tb.offsetHeight+"px");
+  }
+
+  function start(){
+    $("app").hidden = false;
+    loadState();
+    mode = defaultMode();
+    render();
+    measureHeader();
+    window.addEventListener("resize", measureHeader);
+    if (window.ResizeObserver){
+      new ResizeObserver(measureHeader).observe(document.querySelector(".topbar"));
+    }
+    setInterval(function(){ tick(false); }, 10000);
+    document.addEventListener("visibilitychange", function(){ if(!document.hidden) tick(false); });
+    if (window.matchMedia){
+      var mq = window.matchMedia("(prefers-color-scheme: dark)");
+      if (mq.addEventListener) mq.addEventListener("change", render);
+    }
+
+    $("m-week").addEventListener("click", function(){ mode="weekday"; saveState(); render(); });
+    $("m-off").addEventListener("click",  function(){ mode="holiday"; saveState(); render(); });
+    document.querySelectorAll(".adjust button[data-d]").forEach(function(btn){
+      btn.addEventListener("click", function(){ setDelta(+btn.dataset.d); });
+    });
+    $("reset").addEventListener("click", function(){
+      state = {skip:[], delta:0, anchor:null};
+      saveState(); render();
+    });
+  }
+
+  fetch("schedule.json", {cache:"no-cache"})
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(json){ DATA = json; start(); })
+    .catch(function(){ $("error").hidden = false; });
+})();
+</script>
+</body>
+</html>
